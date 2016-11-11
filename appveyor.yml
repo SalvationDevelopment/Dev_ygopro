@@ -1,0 +1,69 @@
+version: '{build}'
+install:
+  # submodules
+  - git submodule update --init --recursive
+  
+  # environment and system dependency
+  - appveyor DownloadFile https://github.com/premake/premake-core/releases/download/v5.0.0-alpha9/premake-5.0.0-alpha9-windows.zip
+  - 7z x premake-5.0.0-alpha9-windows.zip
+  
+  - appveyor DownloadFile https://github.com/libevent/libevent/releases/download/release-2.0.22-stable/libevent-2.0.22-stable.tar.gz
+  - tar xf libevent-2.0.22-stable.tar.gz
+  - move libevent-2.0.22-stable event
+  - xcopy /E event\WIN32-Code event\include
+  
+  - appveyor DownloadFile http://downloads.sourceforge.net/freetype/freetype-2.7.tar.bz2
+  - tar xf freetype-2.7.tar.bz2
+  - move freetype-2.7 freetype
+  
+  - appveyor DownloadFile http://downloads.sourceforge.net/irrlicht/irrlicht-1.8.4.zip
+  - 7z x irrlicht-1.8.4.zip
+  - md irrlicht
+  - move irrlicht-1.8.4\source\Irrlicht irrlicht\src
+  - move irrlicht-1.8.4\include irrlicht\include
+  
+  - appveyor DownloadFile https://www.lua.org/ftp/lua-5.2.4.tar.gz
+  - tar xf lua-5.2.4.tar.gz
+  - move lua-5.2.4\src lua
+  
+  - appveyor DownloadFile https://www.sqlite.org/2016/sqlite-amalgamation-3140200.zip
+  - 7z x sqlite-amalgamation-3140200.zip
+  - move sqlite-amalgamation-3140200 sqlite3
+  
+  # let premake happy
+  - xcopy /E premake\* .
+  
+  # patch irrlicht
+  - patch -p0 < irrlicht\irrlicht.patch
+  
+  # premake
+  - premake5 vs2015
+  
+configuration: Release
+build: 
+    project: build/ygo.sln
+    parallel: true
+after_build:
+  - ps: move bin\release\ygopro.exe .
+  - ps: Start-FileDownload https://mycard.moe/ygopro/cards.cdb
+  - 7z a ygopro-lite-%APPVEYOR_REPO_TAG_NAME%-win32.7z ygopro.exe LICENSE README.md lflist.conf script strings.conf system.conf textures deck cards.cdb
+  - mkdir pics
+  - curl -L https://github.com/mycard/deprecated-ygopro-images/archive/zh-CN.tar.gz | tar --strip-components=1 -C pics -zxf -
+  - curl -L https://github.com/mycard/ygopro-images-field/archive/master.tar.gz | tar --strip-components=1 -C pics -zxf - ygopro-images-field-master/field
+  - 7z a ygopro-%APPVEYOR_REPO_TAG_NAME%-win32.7z ygopro.exe LICENSE README.md lflist.conf script strings.conf system.conf textures deck cards.cdb pics
+artifacts:
+  - path: ygopro-lite-$(APPVEYOR_REPO_TAG_NAME)-win32.7z
+    name: ygopro-lite
+  - path: ygopro-$(APPVEYOR_REPO_TAG_NAME)-win32.7z
+    name: ygopro
+deploy:
+  description: 'Automatic build'
+  provider: GitHub
+  auth_token:
+    secure: JE+i+rXPOQ68ih+o3EAk+Y53pnu30qayvdzlY/s7KwpiP1Dz6USMPebJvRTltyJx # your encrypted token from GitHub
+  on:
+    appveyor_repo_tag: true        # deploy on tag push only
+branches:
+  only:
+    - master
+    - /\d+\..+/
