@@ -19,8 +19,8 @@
 #include <dirent.h>
 #endif
 
-const unsigned short PRO_VERSION = 0x133B;
-const wchar_t* CLIENT_NAME = L"Recode";
+const unsigned short PRO_VERSION = 0x1339;
+const wchar_t* CLIENT_NAME = L"Salvation";
 
 
 namespace ygo {
