@@ -12,3 +12,9 @@ release
 *.cd
 *.aps
 irrlicht new/
+event/*
+freetype/*
+irrlicht/*
+lua/*
+sqlite/*
+sqlite3/*
