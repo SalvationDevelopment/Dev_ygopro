@@ -1,0 +1,68 @@
+language: cpp
+os:
+  - linux
+  - osx
+sudo: required
+dist: trusty
+osx_image: xcode8
+git:
+  submodules: false
+addons:
+  ssh_known_hosts:
+    - github.com
+  apt:
+    packages:
+      - libfreetype6-dev
+      - libevent-dev
+      - libsqlite3-dev
+      - libirrlicht-dev
+      - liblua5.2-dev
+      - libgl1-mesa-dev
+      - libglu-dev
+before_install:
+  - git submodule update --init --recursive
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update;
+      brew install freetype libevent sqlite irrlicht lua dylibbundler;
+      wget -O - https://github.com/premake/premake-core/releases/download/v5.0.0-alpha9/premake-5.0.0-alpha9-macosx.tar.gz | tar zfx -;
+    fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget -O - https://github.com/premake/premake-core/releases/download/v5.0.0-alpha9/premake-5.0.0-alpha9-linux.tar.gz | tar zfx -; fi
+script:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./premake5 gmake --cc=clang; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./premake5 gmake; fi
+  - cd build
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sed -i 's/-llua/-llua5.2/g' ygopro.make; fi
+  - make config=release ygopro
+  - cd ..
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then mv bin/release/ygopro ./; strip ygopro; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      mkdir -p ygopro.app/Contents/MacOS;
+      mv bin/release/ygopro ygopro.app/Contents/MacOS;
+      dylibbundler -x ygopro.app/Contents/MacOS/ygopro -b -d ygopro.app/Contents/Frameworks/ -p @executable_path/../Frameworks/ -cd;
+      strip ygopro.app/Contents/MacOS/ygopro;
+      mkdir ygopro.app/Contents/Resources;
+      mv premake/gframe/ygopro.icns ygopro.app/Contents/Resources/Icon.icns;
+      defaults write "$PWD/ygopro.app/Contents/Info.plist" "CFBundleIconFile" "Icon.icns";
+      echo $CERTIFICATE | base64 --decode --output cert.p12;
+      security create-keychain -p "" build.keychain;
+      security unlock-keychain -p "" build.keychain;
+      security import cert.p12 -k build.keychain -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign;
+      codesign --deep --keychain build.keychain --sign "$(security find-identity -v -p codesigning build.keychain | head -1 | grep -o '".*"' | tr -d '"')" ygopro.app;
+    fi
+before_deploy:
+  - XZ_OPT=-9e tar -Jcf ygopro-lite-$TRAVIS_TAG-$TRAVIS_OS_NAME.tar.xz --exclude=ygopro-lite* ygopro* 
+  - XZ_OPT=-9e tar -Jcf ygopro-$TRAVIS_TAG-$TRAVIS_OS_NAME.tar.xz --exclude=ygopro-lite* ygopro* 
+deploy:
+  provider: releases
+  file:
+    - ygopro-lite-$TRAVIS_TAG-$TRAVIS_OS_NAME.tar.xz
+    - ygopro-$TRAVIS_TAG-$TRAVIS_OS_NAME.tar.xz
+  api_key:
+    secure: ""
+  skip_cleanup: true
+  on:
+    tags: true
+branches:
+  only:
+    - master
+    - /\d+\..+/
