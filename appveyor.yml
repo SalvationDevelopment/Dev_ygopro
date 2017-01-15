@@ -31,7 +31,7 @@ install:
   - move sqlite-amalgamation-3140200 sqlite3
   
   # let premake happy
-  - xcopy /E premake\* .
+  - xcopy /E premake\* . /Y
   
   # patch irrlicht
   - patch -p0 < irrlicht\irrlicht.patch
