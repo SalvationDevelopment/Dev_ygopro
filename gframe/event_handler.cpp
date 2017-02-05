@@ -800,7 +800,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 						myswprintf(formatBuffer, L"%d", select_min);
 						mainGame->stCardPos[id - BUTTON_CARD_0]->setText(formatBuffer);
 						if(select_min == select_max) {
-							unsigned char respbuf[64];
+							unsigned short int respbuf[32];
 							for(int i = 0; i < select_max; ++i)
 								respbuf[i] = sort_list[i] - 1;
 							DuelClient::SetResponseB(respbuf, select_max);
